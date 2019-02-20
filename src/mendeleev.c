@@ -119,12 +119,16 @@ static unsigned int compute_response_length_from_request(mendeleev_t *ctx, uint8
     case MENDELEEV_CMD_SET_COLOR:
     case MENDELEEV_CMD_SET_MODE:
     case MENDELEEV_CMD_OTA:
+        length = 0;
+        break;
+    case MENDELEEV_CMD_GET_VERSION:
+        return MSG_LENGTH_UNDEFINED;
     default:
         /* we do not expect any data in the response */
-        length = MENDELEEV_CMD_LENGTH + MENDELEEV_DATALEN_LENGTH;
+        length = 0;
     }
 
-    return MENDELEEV_CMD_OFFSET + length + MENDELEEV_CHECKSUM_LENGTH;
+    return MENDELEEV_DATA_OFFSET + length + MENDELEEV_CHECKSUM_LENGTH;
 }
 
 /* Sends a request/response */
@@ -200,6 +204,7 @@ int _receive_msg(mendeleev_t *ctx, uint8_t *msg)
     struct timeval *p_tv;
     uint16_t length_to_read;
     int msg_length = 0;
+    uint16_t datalen;
 
     if (ctx->debug) {
         printf("Waiting for a confirmation...\n");
@@ -209,7 +214,7 @@ int _receive_msg(mendeleev_t *ctx, uint8_t *msg)
     FD_ZERO(&rset);
     FD_SET(ctx->s, &rset);
 
-    length_to_read = MENDELEEV_DATALEN_OFFSET + MENDELEEV_DATALEN_LENGTH;
+    length_to_read = MENDELEEV_DATA_OFFSET;
 
     tv.tv_sec = ctx->response_timeout.tv_sec;
     tv.tv_usec = ctx->response_timeout.tv_usec;
@@ -267,7 +272,10 @@ int _receive_msg(mendeleev_t *ctx, uint8_t *msg)
         length_to_read -= rc;
 
         if (length_to_read == 0) {
-            length_to_read = *((uint16_t *)(msg + MENDELEEV_DATALEN_OFFSET)) + MENDELEEV_CHECKSUM_LENGTH;
+            datalen = ((msg[MENDELEEV_DATALEN_OFFSET] << 8) | msg[MENDELEEV_DATALEN_OFFSET + 1]);
+            if (msg_length < (MENDELEEV_DATA_OFFSET + datalen + MENDELEEV_CHECKSUM_LENGTH)) {
+                length_to_read = datalen + MENDELEEV_CHECKSUM_LENGTH;
+            }
         }
 
         if (length_to_read > 0 &&
@@ -341,8 +349,7 @@ static int check_confirmation(mendeleev_t *ctx, uint8_t *req,
 
     /* If the command is one's complement */
     if (function >= 0x80) {
-        if (rsp_length == (MENDELEEV_CMD_OFFSET + MENDELEEV_CMD_LENGTH + MENDELEEV_DATALEN_LENGTH + MENDELEEV_CHECKSUM_LENGTH) &&
-            req[MENDELEEV_CMD_OFFSET] == (rsp[MENDELEEV_CMD_OFFSET] - 0x80)) {
+        if ((rsp_length == (MENDELEEV_DATA_OFFSET + MENDELEEV_CHECKSUM_LENGTH)) && (req[MENDELEEV_CMD_OFFSET] == (uint8_t)(~function))) {
             /* Valid exception code received */
             errno = MENDELEEV_ENOBASE + MENDELEEV_EXCEPTION_NEGATIVE_ACKNOWLEDGE;
             _error_print(ctx, NULL);
@@ -396,8 +403,9 @@ static int check_confirmation(mendeleev_t *ctx, uint8_t *req,
         case MENDELEEV_CMD_SET_COLOR:
         case MENDELEEV_CMD_SET_MODE:
         case MENDELEEV_CMD_OTA:
+        case MENDELEEV_CMD_GET_VERSION:
         default:
-          rc = 1;
+            rc = 1;
         }
     } else {
         if (ctx->debug) {
@@ -417,7 +425,7 @@ static int check_confirmation(mendeleev_t *ctx, uint8_t *req,
 }
 
 
-int mendeleev_send_command(mendeleev_t *ctx, uint8_t command, uint8_t *data, uint16_t data_length)
+int mendeleev_send_command(mendeleev_t *ctx, uint8_t command, uint8_t *data, uint16_t data_length, uint8_t *rsp_buf, uint16_t *rsp_length)
 {
     int rc;
     int req_length;
@@ -448,6 +456,16 @@ int mendeleev_send_command(mendeleev_t *ctx, uint8_t command, uint8_t *data, uin
             return -1;
 
         rc = check_confirmation(ctx, req, rsp, rc);
+        if (rc == -1)
+            return -1;
+
+        uint16_t datalen = ((rsp[MENDELEEV_DATALEN_OFFSET] << 8) | rsp[MENDELEEV_DATALEN_OFFSET + 1]);
+        if (datalen > 0 && rsp != NULL) {
+            memcpy(rsp_buf, rsp + MENDELEEV_DATA_OFFSET, datalen);
+        }
+        if (rsp_length != NULL) {
+            *rsp_length = datalen;
+        }
     }
 
     return rc;

@@ -136,7 +136,7 @@ static uint16_t crc16(uint8_t *buffer, uint16_t buffer_length)
 
 static int _send_msg_pre(uint8_t *req, int req_length)
 {
-    uint16_t crc = crc16(req + MENDELEEV_PREAMBLE_LENGTH, req_length);
+    uint16_t crc = crc16(req + MENDELEEV_DEST_OFFSET, req_length - MENDELEEV_PREAMBLE_LENGTH);
     req[req_length++] = crc >> 8;
     req[req_length++] = crc & 0x00FF;
 
@@ -271,7 +271,7 @@ static int _check_integrity(mendeleev_t *ctx, uint8_t *msg,
         return 0;
     }
 
-    crc_calculated = crc16(msg + MENDELEEV_PREAMBLE_LENGTH, msg_length - MENDELEEV_CHECKSUM_LENGTH);
+    crc_calculated = crc16(msg + MENDELEEV_PREAMBLE_LENGTH, msg_length - MENDELEEV_PREAMBLE_LENGTH - MENDELEEV_CHECKSUM_LENGTH);
     crc_received = (msg[msg_length - 2] << 8) | msg[msg_length - 1];
 
     /* Check CRC of msg */

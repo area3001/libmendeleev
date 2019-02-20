@@ -33,9 +33,10 @@ MENDELEEV_BEGIN_DECLS
 #endif
 
 /* Mendeleev commands */
-#define MENDELEEV_CMD_SET_COLOR 0x00
-#define MENDELEEV_CMD_SET_MODE  0x01
-#define MENDELEEV_CMD_OTA       0x02
+#define MENDELEEV_CMD_SET_COLOR   0x00
+#define MENDELEEV_CMD_SET_MODE    0x01
+#define MENDELEEV_CMD_OTA         0x02
+#define MENDELEEV_CMD_GET_VERSION 0x03
 
 #define MENDELEEV_BROADCAST_ADDRESS    0xFF
 
@@ -133,7 +134,7 @@ MENDELEEV_API int mendeleev_set_debug(mendeleev_t *ctx, int flag);
 
 MENDELEEV_API const char *mendeleev_strerror(int errnum);
 
-MENDELEEV_API int mendeleev_send_command(mendeleev_t *ctx, uint8_t command, uint8_t *data, uint16_t data_length);
+MENDELEEV_API int mendeleev_send_command(mendeleev_t *ctx, uint8_t command, uint8_t *data, uint16_t data_length, uint8_t *rsp_buf, uint16_t *rsp_length);
 
 MENDELEEV_API int mendeleev_receive(mendeleev_t *ctx, uint8_t *req);
 
