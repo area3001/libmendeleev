@@ -120,6 +120,7 @@ static unsigned int compute_response_length_from_request(mendeleev_t *ctx, uint8
     case MENDELEEV_CMD_SET_MODE:
     case MENDELEEV_CMD_SET_OUTPUT:
     case MENDELEEV_CMD_OTA:
+    case MENDELEEV_CMD_REBOOT:
         length = 0;
         break;
     case MENDELEEV_CMD_GET_VERSION:
@@ -406,6 +407,7 @@ static int check_confirmation(mendeleev_t *ctx, uint8_t *req,
         case MENDELEEV_CMD_OTA:
         case MENDELEEV_CMD_GET_VERSION:
         case MENDELEEV_CMD_SET_OUTPUT:
+        case MENDELEEV_CMD_REBOOT:
         default:
             rc = 1;
         }
