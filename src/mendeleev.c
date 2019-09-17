@@ -451,8 +451,9 @@ int mendeleev_send_command(mendeleev_t *ctx, uint8_t command, uint8_t *data, uin
     memcpy(req + req_length, data, data_length);
     req_length += data_length;
 
+    /* Suppress any responses when the request was a broadcast */
     rc = send_msg(ctx, req, req_length);
-    if (rc > 0) {
+    if ((ctx->slave != MENDELEEV_BROADCAST_ADDRESS) && rc > 0) {
         uint8_t rsp[MAX_MESSAGE_LENGTH];
 
         rc = _receive_msg(ctx, rsp);
@@ -474,7 +475,6 @@ int mendeleev_send_command(mendeleev_t *ctx, uint8_t command, uint8_t *data, uin
 
     return rc;
 }
-
 
 void _init_common(mendeleev_t *ctx)
 {
